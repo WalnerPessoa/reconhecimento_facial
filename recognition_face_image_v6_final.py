@@ -4,7 +4,7 @@
 # Data      : 01/09/2024                                     #
 # Autor(a)s : Walner de Oliveira /                           #
 # Objetivo  : executar em Webcam o reconhecimento facial     #
-# Alteracao : XX/XX/XXXX                                     #
+# Alteracao : 09/09/2024                                    #
 #                                                            #
 # -----------------------------------------------------------#
 

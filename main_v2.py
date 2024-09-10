@@ -4,7 +4,7 @@
 # Data      : 01/09/2024                                     #
 # Autor(a)s : Walner de Oliveira /                           #
 # Objetivo  : API para insumos do reconhecimento facial      #
-# Alteracao : XX/XX/XXXX                                     #
+# Alteracao : 09/09/2024                                     #
 #                                                            #
 # -----------------------------------------------------------#
 
