@@ -1,26 +1,26 @@
-
 # -----------------------------------------------------------#
 # Projeto   : Sistema de reconhecimento facial Rasberry      #
-# File Name : main.py                                        #
+# File Name : main_v2.py                                     #
 # Data      : 01/09/2024                                     #
 # Autor(a)s : Walner de Oliveira /                           #
 # Objetivo  : API para insumos do reconhecimento facial      #
 # Alteracao : XX/XX/XXXX                                     #
 #                                                            #
 # -----------------------------------------------------------#
+
 #USO
 
-#uvicorn main:app --reload
+#uvicorn main_v2:app --reload
+
 
 import os
-import json
+import pickle  # Usar pickle para serialização binária
 import face_recognition
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from typing import List
 import uvicorn
-from threading import Thread
 
 app = FastAPI()
 
@@ -113,27 +113,34 @@ async def upload(
         </html>
         """, status_code=400)
 
-    # Carrega o arquivo JSON existente ou cria um novo
-    json_file = 'encodings.json'
-    if os.path.exists(json_file):
-        with open(json_file, 'r') as f:
-            data = json.load(f)
+    # Carrega o arquivo pickle existente ou cria um novo
+    pickle_file = 'encodings.pkl'
+    if os.path.exists(pickle_file):
+        with open(pickle_file, 'rb') as f:
+            data = pickle.load(f)
     else:
-        data = {'names': [], 'audios': [], 'encodings': []}
+        data = {'users': []}  # Estrutura com uma lista de usuários
 
-    # Adiciona as novas codificações e associa o áudio apenas uma vez
-    data['names'].extend([name] * len(user_encodings))
-    data['encodings'].extend(user_encodings)
+    # Verifica se o nome já existe no JSON
+    user_exists = False
+    for user in data['users']:
+        if user['name'] == name:
+            # Se o usuário já existe, adiciona as novas codificações à lista de encodings
+            user['encodings'].extend(user_encodings)
+            user_exists = True
+            break
 
-    # Verifica se o nome já tem um áudio associado, se não, adiciona o áudio
-    if name not in data['names']:
-        data['audios'].append(audio.filename)
-    elif audio.filename not in data['audios']:  # Evita duplicação de áudio
-        data['audios'].append(audio.filename)
+    if not user_exists:
+        # Se o usuário não existe, cria um novo registro
+        data['users'].append({
+            'name': name,
+            'audio': audio.filename,
+            'encodings': user_encodings
+        })
 
-    # Salva os dados atualizados no arquivo JSON
-    with open(json_file, 'w') as f:
-        json.dump(data, f)
+    # Salva os dados atualizados no arquivo pickle
+    with open(pickle_file, 'wb') as f:
+        pickle.dump(data, f)
 
     # Redireciona de volta para a página inicial após o cadastro
     return RedirectResponse(url="/", status_code=303)
@@ -148,4 +155,3 @@ def shutdown_server():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
-
