@@ -9,6 +9,7 @@
 # -----------------------------------------------------------#
 
 #requeriments.txt
+#pip freeze | grep pickle >> requirements.txt
 
 
 ### audi com um mais de um canal - se tiver dois rostos o audio toca os dois.
