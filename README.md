@@ -8,3 +8,11 @@
 ## Código recognition_face_image_v6_final.py
 - por meio da webcam o usuário monitora as imagens e se for cadastrado o Nome aparece no bounding box e o audio dá play para essa pessoa.
   
+## Organização do diretório dos arquivos de imagens e áudios
+- root
+  - dataset
+  - static
+    - audio
+   
+## Geração dos encodding 128-D num arquivo binário
+- encodings.pkl 
