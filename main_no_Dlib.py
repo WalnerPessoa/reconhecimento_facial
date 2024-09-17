@@ -1,26 +1,25 @@
 
 # -----------------------------------------------------------#
 # Projeto   : Sistema de reconhecimento facial Rasberry      #
-# File Name : main_back2.py                                        #
+# File Name : main_no_Dlib.py                                     #
 # Data      : 01/09/2024                                     #
 # Autor(a)s : Walner de Oliveira /                           #
 # Objetivo  : API para insumos do reconhecimento facial      #
-# Alteracao : XX/XX/XXXX                                     #
+# Alteracao : 10/09/2024                                     #
 #                                                            #
 # -----------------------------------------------------------#
+
 #USO
 
-#uvicorn main:app --reload
-
+#uvicorn main_no_Dlib:app --reload
 import os
-import json
-import face_recognition
+import pickle
+import cv2  # Usar OpenCV para detecção facial
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from typing import List
 import uvicorn
-from threading import Thread
 
 app = FastAPI()
 
@@ -35,14 +34,18 @@ AUDIO_FOLDER = 'static/audio/'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
-# Função para carregar e codificar várias imagens
+# Função para carregar e codificar várias imagens usando OpenCV
 def load_face_encodings(image_paths):
     encodings = []
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')  # Usando Haar Cascade para detecção de faces
     for image_path in image_paths:
-        image = face_recognition.load_image_file(image_path)
-        encoding = face_recognition.face_encodings(image)
-        if encoding:  # Verifica se foi possível encontrar uma face na imagem
-            encodings.append(encoding[0].tolist())  # Adiciona a codificação à lista
+        image = cv2.imread(image_path)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        for (x, y, w, h) in faces:
+            face = image[y:y+h, x:x+w]
+            encoding = cv2.resize(face, (128, 128))  # Redimensiona para um tamanho fixo para gerar o encoding
+            encodings.append(encoding.flatten().tolist())  # Adiciona o encoding à lista
     return encodings
 
 # Página inicial para upload (HTML simples)
@@ -113,27 +116,32 @@ async def upload(
         </html>
         """, status_code=400)
 
-    # Carrega o arquivo JSON existente ou cria um novo
-    json_file = 'encodings.json'
-    if os.path.exists(json_file):
-        with open(json_file, 'r') as f:
-            data = json.load(f)
+    # Carrega o arquivo pickle existente ou cria um novo
+    pickle_file = 'encodings.pkl'
+    if os.path.exists(pickle_file):
+        with open(pickle_file, 'rb') as f:
+            data = pickle.load(f)
     else:
-        data = {'names': [], 'audios': [], 'encodings': []}
+        data = {'users': []}  # Estrutura com uma lista de usuários
 
-    # Adiciona as novas codificações e associa o áudio apenas uma vez
-    data['names'].extend([name] * len(user_encodings))
-    data['encodings'].extend(user_encodings)
+    # Verifica se o nome já existe
+    user_exists = False
+    for user in data['users']:
+        if user['name'] == name:
+            user['encodings'].extend(user_encodings)
+            user_exists = True
+            break
 
-    # Verifica se o nome já tem um áudio associado, se não, adiciona o áudio
-    if name not in data['names']:
-        data['audios'].append(audio.filename)
-    elif audio.filename not in data['audios']:  # Evita duplicação de áudio
-        data['audios'].append(audio.filename)
+    if not user_exists:
+        data['users'].append({
+            'name': name,
+            'audio': audio.filename,
+            'encodings': user_encodings
+        })
 
-    # Salva os dados atualizados no arquivo JSON
-    with open(json_file, 'w') as f:
-        json.dump(data, f)
+    # Salva os dados atualizados no arquivo pickle
+    with open(pickle_file, 'wb') as f:
+        pickle.dump(data, f)
 
     # Redireciona de volta para a página inicial após o cadastro
     return RedirectResponse(url="/", status_code=303)
@@ -144,8 +152,7 @@ async def shutdown():
     shutdown_server()
 
 def shutdown_server():
-    os._exit(0)  # Encerra o servidor de forma imediata
+    os._exit(0)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
-

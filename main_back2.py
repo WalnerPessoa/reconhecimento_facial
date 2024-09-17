@@ -1,16 +1,13 @@
 # -----------------------------------------------------------#
 # Projeto   : Sistema de reconhecimento facial Rasberry      #
-# File Name : recogintion_face_imagem_v6_final.py            #
-# Data      : 16/09/2024                                     #
+# File Name : main_v2.py                                     #
+# Data      : 01/09/2024                                     #
 # Autor(a)s : Walner de Oliveira /                           #
-# Objetivo  : executar em Webcam o reconhecimento facial     #
+# Objetivo  : API para insumos do reconhecimento facial      #
 # Alteracao : 09/09/2024                                     #
 #                                                            #
-# arquivos desse sistema:                                    #
-# rec_facial.py                                              #
-# main.py                                                    #
-# ativar_gpio.py                                             #
 # -----------------------------------------------------------#
+
 #USO
 
 #uvicorn main:app --reload
@@ -55,97 +52,34 @@ async def main():
     <html>
         <head>
             <title>Cadastro de Usuário</title>
-            <style>
-                body {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                    font-family: Arial, sans-serif;
-                    background-color: #f0f0f0;
-                }
-                .container {
-                    text-align: center;
-                    background-color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
-                }
-                form {
-                    margin-top: 20px;
-                }
-                input[type="text"], input[type="file"], select {
-                    width: 100%;
-                    padding: 10px;
-                    margin: 10px 0;
-                    border: 1px solid #ccc;
-                    border-radius: 5px;
-                }
-                input[type="submit"] {
-                    padding: 10px 20px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                }
-                input[type="submit"]:hover {
-                    background-color: #0056b3;
-                }
-            </style>
         </head>
         <body>
-            <div class="container">
-                <h1>CADASTRE AQUI NOVO USUÁRIO</h1>
-                <form action="/upload/" enctype="multipart/form-data" method="post">
-                    <label for="name">Nome do Usuário:</label>
-                    <input type="text" id="name" name="name" required><br><br>
+            <h1>CADASTRE AQUI NOVO USUÁRIO</h1>
+            <form action="/upload/" enctype="multipart/form-data" method="post">
+                <label for="name">Nome do Usuário:</label>
+                <input type="text" id="name" name="name" required><br><br>
 
-                    <label for="photo">Anexar Fotos:</label>
-                    <input type="file" id="photo" name="photos" accept="image/*" multiple required><br><br>
+                <label for="photo">Anexar Fotos:</label>
+                <input type="file" id="photo" name="photos" accept="image/*" multiple required><br><br>
 
-                    <label for="audio">Anexar Áudio:</label>
-                    <input type="file" id="audio" name="audio" accept="audio/*" required><br><br>
+                <label for="audio">Anexar Áudio:</label>
+                <input type="file" id="audio" name="audio" accept="audio/*" required><br><br>
 
-                    <label for="item">Selecione um Item:</label>
-                    <select id="item" name="item" required>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="12">12</option>
-                        <option value="13">13</option>
-                        <option value="16">16</option>
-                        <option value="17">17</option>
-                        <option value="18">18</option>
-                        <option value="19">19</option>
-                        <option value="20">20</option>
-                        <option value="21">21</option>
-                        <option value="22">22</option>
-                        <option value="23">23</option>
-                        <option value="24">24</option>
-                        <option value="25">25</option>
-                        <option value="26">26</option>
-                        <option value="27">27</option>
-                        <option value="36">36</option>
-                        <option value="38">38</option>
-                        <option value="40">40</option>
-                    </select><br><br>
-
-                    <input type="submit" value="Cadastrar Usuário">
-                </form>
-            </div>
+                <input type="submit" value="Cadastrar Usuário">
+            </form>
+            <form action="/shutdown" method="post">
+                <button type="submit">Sair</button>
+            </form>
         </body>
     </html>
     """
 
-# Rota para lidar com o envio de imagens, áudio e item
+# Rota para lidar com o envio de imagens e áudio
 @app.post("/upload/")
 async def upload(
         name: str = Form(...),
         photos: List[UploadFile] = File(...),
-        audio: UploadFile = File(...),
-        item: str = Form(...)  # Novo campo adicionado para capturar o valor do item
+        audio: UploadFile = File(...)
 ):
     # Lista para armazenar os caminhos das imagens
     image_paths = []
@@ -201,8 +135,7 @@ async def upload(
         data['users'].append({
             'name': name,
             'audio': audio.filename,
-            'encodings': user_encodings,
-            'item': item  # Incluindo o item selecionado no cadastro
+            'encodings': user_encodings
         })
 
     # Salva os dados atualizados no arquivo pickle
@@ -212,6 +145,13 @@ async def upload(
     # Redireciona de volta para a página inicial após o cadastro
     return RedirectResponse(url="/", status_code=303)
 
+# Função para fazer shutdown do servidor
+@app.post("/shutdown")
+async def shutdown():
+    shutdown_server()
+
+def shutdown_server():
+    os._exit(0)  # Encerra o servidor de forma imediata
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
