@@ -28,9 +28,12 @@ import subprocess
 import threading
 from queue import Queue, Empty
 
+gpio_lock = threading.Lock()  # Lock para sincronizar o acesso ao GPIO
+
 # Função para ativar a GPIO com base no 'item' usando subprocess
 def activate_gpio(item):
-    subprocess.run(['sudo', 'python3', 'ativar_gpio.py', str(item)], check=True)
+    with gpio_lock:
+        subprocess.run(['sudo', 'python3', 'ativar_gpio.py', str(item)], check=True)
 
 # Função para tocar o áudio usando mpg123
 def play_audio(audio_path):
@@ -44,7 +47,7 @@ def load_encodings(pickle_file):
     return data['users']
 
 # Função para reconhecimento facial (codificação e comparação)
-def recognize_faces(face_queue, users, frames_without_recognition, forget_frames):
+def recognize_faces(face_queue, users, played_audios, frames_without_recognition, forget_frames):
     while True:
         try:
             frame_data = face_queue.get(timeout=1)
@@ -59,6 +62,7 @@ def recognize_faces(face_queue, users, frames_without_recognition, forget_frames
         encodings = face_recognition.face_encodings(rgb_frame, boxes)
         current_frame_names = set()
 
+        # Processa as codificações de rostos no frame
         for encoding in encodings:
             name = "Unknown"
             for user in users:
@@ -71,30 +75,41 @@ def recognize_faces(face_queue, users, frames_without_recognition, forget_frames
                 print(f"Pessoa reconhecida: {name}")
                 current_frame_names.add(name)
 
-                # Se o nome for reconhecido, zerar o contador de frames sem reconhecimento
+                # Se o nome for reconhecido, zerar o contador de frames sem reconhecimento de rostos
                 frames_without_recognition[0] = 0
 
-                user = next(user for user in users if user['name'] == name)
-                audio_path = os.path.join('/home/felipe/static/audio', user['audio'])
+                # Acionar áudio e GPIO apenas uma vez por nome, até que o nome seja esquecido
+                if name not in played_audios:
+                    user = next(user for user in users if user['name'] == name)
+                    audio_path = os.path.join('/home/felipe/static/audio', user['audio'])
 
-                # Tocar o áudio e ativar o GPIO
-                threading.Thread(target=play_audio, args=(audio_path,)).start()
-                threading.Thread(target=activate_gpio, args=(user['item'],)).start()
+                    # Tocar o áudio e ativar o GPIO usando threads daemon
+                    audio_thread = threading.Thread(target=play_audio, args=(audio_path,))
+                    audio_thread.daemon = True  # Definir como thread daemon
+                    audio_thread.start()
+
+                    gpio_thread = threading.Thread(target=activate_gpio, args=(user['item'],))
+                    gpio_thread.daemon = True  # Definir como thread daemon
+                    gpio_thread.start()
+
+                    # Marcar o nome como já acionado
+                    played_audios.add(name)
 
         # Se nenhum nome foi reconhecido neste frame, aumentar o contador
         if not current_frame_names:
             frames_without_recognition[0] += 1
             print(f"Nenhum nome reconhecido por {frames_without_recognition[0]} frames.")
 
-        # Se atingiu o número de frames sem reconhecimento, acionar GPIO e áudio novamente
+        # Se atingiu o número de frames sem reconhecimento, resetar o estado de "esquecimento"
         if frames_without_recognition[0] >= forget_frames:
-            print(f"Passaram-se {forget_frames} frames sem reconhecer nenhum nome, acionando novamente.")
-            frames_without_recognition[0] = 0  # Resetar o contador após acionar
+            print(f"Passaram-se {forget_frames} frames sem reconhecer nenhum nome, resetando estado.")
+            frames_without_recognition[0] = 0
+            played_audios.clear()  # Esquece todos os nomes, permitindo que sejam acionados novamente
 
         face_queue.task_done()
 
 # Função para detectar faces e colocar na fila
-def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=15):
+def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=3):
     users = load_encodings(encodings_file)
 
     if not users:
@@ -102,9 +117,10 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
         return
 
     face_queue = Queue()
+    played_audios = set()
     frames_without_recognition = [0]  # Usar lista para rastrear frames sem reconhecimento
 
-    recognize_thread = threading.Thread(target=recognize_faces, args=(face_queue, users, frames_without_recognition, forget_frames))
+    recognize_thread = threading.Thread(target=recognize_faces, args=(face_queue, users, played_audios, frames_without_recognition, forget_frames))
     recognize_thread.start()
 
     video_capture = cv2.VideoCapture(0)
@@ -152,4 +168,4 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
 encodings_file = '/home/felipe/encodings.pkl'
 
 # Inicia a detecção e reconhecimento facial
-detect_faces(encodings_file, frame_skip=20, resize_scale=0.5)
+detect_faces(encodings_file, frame_skip=20, resize_scale=0.5, forget_frames=3)
