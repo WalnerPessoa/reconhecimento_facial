@@ -1,3 +1,24 @@
+# -----------------------------------------------------------#
+# Projeto   : Sistema de reconhecimento facial Rasberry      #
+# File Name : recogintion_face_imagem_v6_final.py            #
+# Data      : 16/09/2024                                     #
+# Autor(a)s : Walner de Oliveira /                           #
+# Objetivo  : executar em Webcam o reconhecimento facial     #
+# Alteracao : 09/09/2024                                     #
+#                                                            #
+# arquivos desse sistema:                                    #
+# rec_facial_ultimo.py                                              #
+# main.py                                                    #
+# ativar_gpio.py                                             #
+# -----------------------------------------------------------#
+#USO
+
+#python rec_facial_ultimo.py
+# para deixar video masi rápido  aumentar de 5 para 10 o frame_skip
+#recognize_faces_from_webcam(encodings_file, frame_skip=10, resize_scale=0.5)
+
+# digite tecla "q" para sair
+
 import face_recognition
 import pickle
 import cv2
@@ -9,7 +30,8 @@ import subprocess
 # Função para ativar a GPIO com base no 'item' usando subprocess
 def activate_gpio(item):
     try:
-        subprocess.run(['sudo', 'python3', '/home/felipe/ativar_gpio.py', str(item)], check=True)
+        # Chama o script 'ativar_gpio.py' passando o número da GPIO (item) com sudo
+        subprocess.run(['sudo', 'python3', 'ativar_gpio.py', str(item)], check=True)
         print(f"GPIO {item} ativada com sucesso.")
     except subprocess.CalledProcessError as e:
         print(f"Erro ao ativar a GPIO {item}: {e}")
@@ -60,7 +82,6 @@ def recognize_faces_from_webcam(encodings_file, frame_skip=10, resize_scale=0.7)
         return
 
     played_audios = set()
-    previous_frame_names = set()  # Reter os nomes das pessoas no frame anterior
     video_capture = cv2.VideoCapture(0)
     frame_count = 0
 
@@ -96,24 +117,10 @@ def recognize_faces_from_webcam(encodings_file, frame_skip=10, resize_scale=0.7)
 
             names.append(name)
 
-        current_frame_names = set(names)  # Reter os nomes das pessoas no frame atual
-
-        for name in current_frame_names:
-            if name != "Unknown" and name not in previous_frame_names:
-                user = next(user for user in users if user['name'] == name)
-                audio_path = os.path.join('/home/felipe/static/audio', user['audio'])
-                print(f"Tocando áudio: {audio_path}")
-                play_audio(audio_path)
-
-                if user['item'] == '21':  # Suponha que a porta 21 está vinculada a este item
-                    activate_gpio(user['item'])
-                    print(f"Ativando GPIO 21 para {name}")
-
-        previous_frame_names = current_frame_names
-
         for ((top, right, bottom, left), name) in zip(boxes, names):
+            # Imprimir o nome da pessoa reconhecida
             if name != "Unknown":
-                print(f"Pessoa reconhecida: {name}")
+                print(f"\nPessoa reconhecida: {name}")
 
             top = int(top / resize_scale)
             right = int(right / resize_scale)
@@ -124,13 +131,28 @@ def recognize_faces_from_webcam(encodings_file, frame_skip=10, resize_scale=0.7)
             y = top - 15 if top - 15 > 15 else top + 15
             cv2.putText(frame, name, (left, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
+            if name != "Unknown" and name not in played_audios:
+                user = next(user for user in users if user['name'] == name)
+                audio_path = os.path.join('home/felipe/static/audio', user['audio'])
+                print(f"Tocando áudio: {audio_path}")
+                play_audio(audio_path)
 
-    # Libera os recursos da câmera após sair do loop
+                # Ativa a GPIO com base no item gravado para o usuário
+                activate_gpio(user['item'])
+
+                played_audios.add(name)
+
+        #cv2.imshow("Webcam - Reconhecimento Facial", frame)
+
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break
+
     video_capture.release()
+    #cv2.destroyAllWindows()
 
 
 # Caminho para o arquivo pickle com as codificações faciais
 encodings_file = '/home/felipe/encodings.pkl'
 
-# Inicia o reconhecimento facial
+# Inicia o reconhecimento facial, ignorando frames e ajustando a resolução
 recognize_faces_from_webcam(encodings_file, frame_skip=20, resize_scale=0.5)

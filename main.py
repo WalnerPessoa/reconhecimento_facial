@@ -7,13 +7,15 @@
 # Alteracao : 09/09/2024                                     #
 #                                                            #
 # arquivos desse sistema:                                    #
-# rec_facial.py                                              #
+# rec_facial_ultimo.py                                              #
 # main.py                                                    #
 # ativar_gpio.py                                             #
 # -----------------------------------------------------------#
 #USO
 
 #uvicorn main:app --reload
+#uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
 
 
 import os
@@ -108,7 +110,7 @@ async def main():
                     <label for="audio">Anexar Áudio:</label>
                     <input type="file" id="audio" name="audio" accept="audio/*" required><br><br>
 
-                    <label for="item">Selecione um Item:</label>
+                    <label for="item">Selecione uma das portas abaixo do Raspberry:</label>
                     <select id="item" name="item" required>
                         <option value="4">4</option>
                         <option value="5">5</option>
@@ -214,4 +216,4 @@ async def upload(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
