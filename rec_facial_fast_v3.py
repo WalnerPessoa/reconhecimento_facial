@@ -33,12 +33,14 @@ gpio_lock = threading.Lock()  # Lock para sincronizar o acesso ao GPIO
 # Função para ativar a GPIO com base no 'item' usando subprocess
 def activate_gpio(item):
     with gpio_lock:
-        subprocess.run(['sudo', 'python3', 'ativar_gpio.py', str(item)], check=True)
+        subprocess.run(['sudo', 'python3', 'home/felipe/ativar_gpio.py', str(item)], check=True)
+        #subprocess.run(['sudo', 'python3', 'home/felipe/ativar_gpio.py', str(item)], check=True, stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 # Função para tocar o áudio usando mpg123
 def play_audio(audio_path):
     if os.path.exists(audio_path):
         subprocess.run(['mpg123', audio_path], check=True)
+        #subprocess.run(['mpg123', audio_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 # Função para carregar as codificações faciais do arquivo pickle
 def load_encodings(pickle_file):
@@ -75,7 +77,7 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
                 print(f"Pessoa reconhecida: {name}")
                 current_frame_names.add(name)
 
-                # Se o nome for reconhecido, zerar o contador de frames sem reconhecimento de rostos
+                # Zera o contador de frames sem reconhecimento
                 frames_without_recognition[0] = 0
 
                 # Acionar áudio e GPIO apenas uma vez por nome, até que o nome seja esquecido
@@ -109,7 +111,7 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
         face_queue.task_done()
 
 # Função para detectar faces e colocar na fila
-def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=3):
+def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=1):
     users = load_encodings(encodings_file)
 
     if not users:
@@ -158,14 +160,17 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
 
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
 
+        #cv2.imshow("Webcam - Detecção Facial", frame)  ##### cometar para reduzir custo computacional
     face_queue.put(None)
     face_queue.join()
     recognize_thread.join()
 
     video_capture.release()
+    #cv2.destroyAllWindows() ##### cometar para reduzir custo computacional
 
 # Caminho para o arquivo pickle com as codificações faciais
 encodings_file = '/home/felipe/encodings.pkl'
 
 # Inicia a detecção e reconhecimento facial
 detect_faces(encodings_file, frame_skip=20, resize_scale=0.5, forget_frames=3)
+
