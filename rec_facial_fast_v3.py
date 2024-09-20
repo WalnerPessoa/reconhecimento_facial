@@ -49,6 +49,7 @@ def load_encodings(pickle_file):
     return data['users']
 
 # Função para reconhecimento facial (codificação e comparação)
+# Função para reconhecimento facial (codificação e comparação)
 def recognize_faces(face_queue, users, played_audios, frames_without_recognition, forget_frames):
     while True:
         try:
@@ -109,6 +110,8 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
             played_audios.clear()  # Esquece todos os nomes, permitindo que sejam acionados novamente
 
         face_queue.task_done()
+
+
 
 # Função para detectar faces e colocar na fila
 def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=1):
