@@ -33,14 +33,14 @@ gpio_lock = threading.Lock()  # Lock para sincronizar o acesso ao GPIO
 # Função para ativar a GPIO com base no 'item' usando subprocess
 def activate_gpio(item):
     with gpio_lock:
-        subprocess.run(['sudo', 'python3', 'home/felipe/ativar_gpio.py', str(item)], check=True)
+        subprocess.run(['sudo', 'python3', '/home/felipe/ativar_gpio.py', str(item)], check=True)
         #subprocess.run(['sudo', 'python3', 'home/felipe/ativar_gpio.py', str(item)], check=True, stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 # Função para tocar o áudio usando mpg123
 def play_audio(audio_path):
     if os.path.exists(audio_path):
-        subprocess.run(['mpg123', audio_path], check=True)
-        #subprocess.run(['mpg123', audio_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #subprocess.run(['mpg123', audio_path], check=True)
+        subprocess.run(['mpg123', audio_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 # Função para carregar as codificações faciais do arquivo pickle
 def load_encodings(pickle_file):
@@ -70,6 +70,7 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
             name = "Unknown"
             for user in users:
                 matches = face_recognition.compare_faces(user['encodings'], encoding, tolerance=0.5)
+
                 if True in matches:
                     name = user['name']
                     break
@@ -114,11 +115,12 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
 
 
 # Função para detectar faces e colocar na fila
-def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=1):
+def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=1,model_detection = "hog"):
     users = load_encodings(encodings_file)
+    print("[INFO] Carregando codificações faciais dos usuários cadastrados...")
 
     if not users:
-        print("Nenhum usuário encontrado no arquivo de codificações.")
+        print("Nenhum usuário cadastrado no arquivo de codificações.")
         return
 
     face_queue = Queue()
@@ -150,7 +152,7 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
         rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
         # Detecção de faces
-        boxes = face_recognition.face_locations(rgb_frame, model="hog")
+        boxes = face_recognition.face_locations(rgb_frame, model=model_detection)
 
         if boxes:
             face_queue.put((small_frame, boxes, resize_scale))
@@ -175,5 +177,5 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
 encodings_file = '/home/felipe/encodings.pkl'
 
 # Inicia a detecção e reconhecimento facial
-detect_faces(encodings_file, frame_skip=20, resize_scale=0.5, forget_frames=3)
+detect_faces(encodings_file, frame_skip=20, resize_scale=0.5, forget_frames=1, model_detection = "hog")
 
