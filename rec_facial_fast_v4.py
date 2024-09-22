@@ -28,9 +28,14 @@ import os
 import subprocess
 import threading
 from queue import Queue, Empty
+import time  # Biblioteca para medir o tempo
+import pygame
 
 # Lock para sincronizar o acesso ao GPIO. Isso impede que duas threads tentem ativar o GPIO ao mesmo tempo.
 gpio_lock = threading.Lock()
+
+# Marca o tempo de início do código
+start_time = time.time()
 
 # Função responsável por ativar um GPIO específico. O 'item' determina qual pino será ativado.
 def activate_gpio(item):
@@ -38,9 +43,29 @@ def activate_gpio(item):
         subprocess.run(['sudo', 'python3', '/home/felipe/ativar_gpio.py', str(item)], check=True)
 
 # Função para tocar um arquivo de áudio usando o player 'mpg123'.
+''' 
 def play_audio(audio_path):
     if os.path.exists(audio_path):  # Verifica se o arquivo de áudio existe.
-        subprocess.run(['mpg123', audio_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #subprocess.run(['mpg123', audio_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #subprocess.run(['mpg123', audio_path], check=True)
+        #subprocess.run(['/usr/bin/mpg123', '--au', audio_path], check=True)
+        subprocess.run(['/usr/bin/mpg123', audio_path], check=True)
+        #subprocess.run(['/usr/bin/aplay', audio_path], check=True)
+'''
+
+def play_audio(audio_path):
+    try:
+        if os.path.exists(audio_path):  # Verificar se o arquivo existe
+            channel = pygame.mixer.find_channel()  # Encontra um canal livre
+            if channel is not None:
+                sound = pygame.mixer.Sound(audio_path)  # Carrega o som
+                channel.play(sound)  # Reproduz o som no canal disponível
+            else:
+                print("Todos os canais estão ocupados. Não foi possível tocar o áudio.")
+        else:
+            print(f"Arquivo de áudio não encontrado: {audio_path}")
+    except Exception as e:
+        print(f"Erro ao tocar o áudio: {e}")
 
 # Função que carrega as codificações faciais dos usuários salvas em um arquivo pickle.
 def load_encodings(pickle_file):
@@ -51,6 +76,11 @@ def load_encodings(pickle_file):
 # Função que realiza o reconhecimento facial.
 # Utiliza uma fila (queue) para processar os frames capturados pela webcam.
 def recognize_faces(face_queue, users, played_audios, frames_without_recognition, forget_frames):
+    first_detection = False  # Flag para identificar a primeira detecção
+    if not first_detection:  # Checa se é a primeira detecção
+        first_detection = True
+        detection_time = time.time() - start_time  # Calcula o tempo até a primeira detecção
+        print(f"Tempo de primeiro reconhecimento de rosto...: {detection_time:.2f} segundos")
     while True:
         try:
             frame_data = face_queue.get(timeout=1)  # Tenta pegar um frame da fila, aguardando até 1 segundo.
@@ -65,6 +95,8 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
 
         # Obtém as codificações faciais para cada rosto detectado no frame.
         encodings = face_recognition.face_encodings(rgb_frame, boxes)
+        #Gera as codificações faciais (vetores numéricos) a partir de uma imagem contendo rostos.
+
         current_frame_names = set()  # Um conjunto para rastrear os nomes das pessoas reconhecidas no frame atual.
 
         # Compara as codificações faciais encontradas com as dos usuários cadastrados.
@@ -72,6 +104,10 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
             name = "Unknown"  # Se não for encontrada uma correspondência, o nome será "Unknown".
             for user in users:
                 matches = face_recognition.compare_faces(user['encodings'], encoding, tolerance=0.5)
+                # compará novo rosto com as codificações dos rostos cadastrados.
+                # Compara essas codificações geradas com as codificações previamente armazenadas para verificar
+                # se existe uma correspondência
+
                 if True in matches:
                     name = user['name']  # Nome do usuário reconhecido.
                     break
@@ -86,6 +122,8 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
                 # Toca o áudio e ativa o GPIO apenas uma vez por nome reconhecido.
                 if name not in played_audios:
                     user = next(user for user in users if user['name'] == name)
+                    #audio_path = "/home/felipe/static/audio/audio_walner.wav"
+                    #audio_path = os.path.join('/home/felipe/static/audio', user['audio'])
                     audio_path = os.path.join('/home/felipe/static/audio', user['audio'])
 
                     # Inicia uma thread para tocar o áudio.
@@ -115,7 +153,9 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
         face_queue.task_done()  # Indica que o processamento do frame foi concluído.
 
 # Função que captura os frames da webcam e detecta rostos.
-def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=1, model_detection="hog"):
+def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=8, model_detection="hog"):
+    first_detection = False  # Flag para identificar a primeira detecção
+
     # Carrega as codificações faciais dos usuários cadastrados.
     users = load_encodings(encodings_file)
     print("[INFO] Carregando codificações faciais dos usuários cadastrados...")
@@ -158,9 +198,19 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
 
         # Detecta as localizações dos rostos no frame.
         boxes = face_recognition.face_locations(rgb_frame, model=model_detection)
+        # retornar uma lista vazia se não tiver nenhuma FACE DETECTADA
+        if not first_detection:  # Checa se é a primeira detecção
+            first_detection = True
+            detection_time = time.time() - start_time  # Calcula o tempo até a primeira detecção
+            print(f"Tempo de primeira detecção de rosto...: {detection_time:.2f} segundos")
+
+        if not boxes:
+            frames_without_recognition[0] = 0
+            played_audios.clear()  # Esquece todos os nomes, permitindo que sejam acionados novamente.
 
         if boxes:  # Se forem detectadas faces, coloca o frame na fila.
             face_queue.put((small_frame, boxes, resize_scale))
+            #Quando um rosto é detectado ele é enviado para a fila face_queue para o reconhecimento facial.
 
         # Desenha um retângulo ao redor de cada face detectada.
         for (top, right, bottom, left) in boxes:
@@ -181,4 +231,4 @@ def detect_faces(encodings_file, frame_skip=10, resize_scale=0.7, forget_frames=
 encodings_file = '/home/felipe/encodings.pkl'
 
 # Inicia a detecção e reconhecimento facial.
-detect_faces(encodings_file, frame_skip=20, resize_scale=0.5, forget_frames=1, model_detection="hog")
+detect_faces(encodings_file, frame_skip=20, resize_scale=0.5, forget_frames=8, model_detection="hog")
