@@ -181,7 +181,9 @@ async def upload(
         """, status_code=400)
 
     # Carrega o arquivo pickle com os usuários já cadastrados ou cria um novo.
-    pickle_file = 'encodings.pkl'
+    #pickle_file = 'encodings.pkl'
+    pickle_file = os.path.join(os.getcwd(), 'encodings.pkl')
+
     if os.path.exists(pickle_file):
         with open(pickle_file, 'rb') as f:
             data = pickle.load(f)  # Carrega os dados existentes.
