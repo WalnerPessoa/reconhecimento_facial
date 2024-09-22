@@ -5,3 +5,5 @@ opencv-python==4.10.0.84
 python-multipart==0.0.9
 pygame==2.6.0
 pickleshare==0.7.5
+
+
