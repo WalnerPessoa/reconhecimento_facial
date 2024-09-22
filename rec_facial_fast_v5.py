@@ -40,9 +40,19 @@ def activate_gpio(item):
         subprocess.run(['sudo', 'python3', '/home/felipe/ativar_gpio.py', str(item)], check=True)
 
 # Função para tocar um arquivo de áudio usando o player 'mpg123'.
+#def play_audio(audio_path):
+#    if os.path.exists(audio_path):
+#        subprocess.run(['/usr/bin/mpg123', audio_path], check=True)
+
 def play_audio(audio_path):
     if os.path.exists(audio_path):
-        subprocess.run(['/usr/bin/mpg123', audio_path], check=True)
+        try:
+            subprocess.run(['/usr/bin/mpg123', audio_path], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Erro ao tocar áudio: {e}")
+    else:
+        print(f"Arquivo de áudio {audio_path} não encontrado.")
+
 
 # Função que carrega as codificações faciais dos usuários salvas em um arquivo pickle.
 def load_encodings(pickle_file):
