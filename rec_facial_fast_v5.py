@@ -44,6 +44,19 @@ def activate_gpio(item):
 #    if os.path.exists(audio_path):
 #        subprocess.run(['/usr/bin/mpg123', audio_path], check=True)
 
+
+
+def play_audio(audio_path):
+    #time.sleep(2)  # Aguarda 5 segundos para garantir que os serviços de áudio estejam disponíveis
+    if os.path.exists(audio_path):
+        try:
+            subprocess.run(['mpg123', audio_path], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Erro ao tocar áudio: {e}")
+    else:
+        print(f"Arquivo de áudio {audio_path} não encontrado.")
+
+'''         
 def play_audio(audio_path):
     if os.path.exists(audio_path):
         try:
@@ -52,7 +65,7 @@ def play_audio(audio_path):
             print(f"Erro ao tocar áudio: {e}")
     else:
         print(f"Arquivo de áudio {audio_path} não encontrado.")
-
+'''
 
 # Função que carrega as codificações faciais dos usuários salvas em um arquivo pickle.
 def load_encodings(pickle_file):
@@ -107,7 +120,7 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
 
         if not current_frame_names:
             frames_without_recognition[0] += 1
-            print(f"Nenhum nome reconhecido por {frames_without_recognition[0]} frames.")
+            #print(f"Nenhum nome reconhecido por {frames_without_recognition[0]} frames.")
 
         if frames_without_recognition[0] >= forget_frames:
             print(f"Passaram-se {forget_frames} frames sem reconhecer nenhum nome, resetando estado.")
@@ -156,7 +169,7 @@ def detect_faces(encodings_file, check_interval=10, resize_scale=0.7, forget_fra
 
         if not boxes:
             frames_without_recognition[0] = 0
-            print('[ACTION] Permitir que usuários sejam reconhecidos novamente')
+            #print('[ACTION] Permitir que usuários sejam reconhecidos novamente')
             played_audios.clear()  # Esquece todos os nomes, permitindo que sejam acionados novamente.
 
         if boxes:
