@@ -132,10 +132,17 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
 # Função para verificar se o arquivo de codificações foi modificado.
 def check_for_new_encodings(encodings_file, last_mtime):
     current_mtime = os.path.getmtime(encodings_file)
+
     if current_mtime > last_mtime:
         print("[INFO] Atualizando codificações faciais... Reiniciando o serviço.")
-        subprocess.run(['sudo', 'systemctl', 'restart', 'rec_facial.service'])  # Reinicia o serviço
+        try:
+            subprocess.run(['sudo', 'systemctl', 'restart', 'rec_facial.service'], check=True)
+            print("[INFO] Serviço reiniciado com sucesso.")
+        except subprocess.CalledProcessError as e:
+            print(f"[ERRO] Falha ao reiniciar o serviço: {e}")
+
     return current_mtime
+
 
 # Função que captura os frames da webcam e detecta rostos.
 def detect_faces(encodings_file, check_interval=10, resize_scale=0.7, forget_frames=28, model_detection="hog"):
