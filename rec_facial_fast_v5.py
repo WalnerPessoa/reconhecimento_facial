@@ -123,7 +123,7 @@ def recognize_faces(face_queue, users, played_audios, frames_without_recognition
             #print(f"Nenhum nome reconhecido por {frames_without_recognition[0]} frames.")
 
         if frames_without_recognition[0] >= forget_frames:
-            print(f"Passaram-se {forget_frames} frames sem reconhecer nenhum nome, resetando estado.")
+            #print(f"Passaram-se {forget_frames} frames sem reconhecer nenhum nome, resetando estado.")
             frames_without_recognition[0] = 0
             played_audios.clear()
 
@@ -136,13 +136,29 @@ def check_for_new_encodings(encodings_file, last_mtime):
     if current_mtime > last_mtime:
         print("[INFO] Atualizando codificações faciais... Reiniciando o serviço.")
         try:
+            result = subprocess.run(['sudo', 'systemctl', 'restart', 'rec_facial.service'], check=True)
+            if result.returncode == 0:
+                print("[INFO] Serviço reiniciado com sucesso.")
+            else:
+                print(f"[ERRO] Falha ao reiniciar o serviço. Código de saída: {result.returncode}")
+        except subprocess.CalledProcessError as e:
+            print(f"[ERRO] Falha ao reiniciar o serviço: {e}")
+
+    return current_mtime
+'''
+def check_for_new_encodings(encodings_file, last_mtime):
+    current_mtime = os.path.getmtime(encodings_file)
+
+    if current_mtime > last_mtime:
+        print("[INFO] Atualizando codificações faciais... Reiniciando o serviço.")
+        try:
             subprocess.run(['sudo', 'systemctl', 'restart', 'rec_facial.service'], check=True)
             print("[INFO] Serviço reiniciado com sucesso.")
         except subprocess.CalledProcessError as e:
             print(f"[ERRO] Falha ao reiniciar o serviço: {e}")
 
     return current_mtime
-
+'''
 
 # Função que captura os frames da webcam e detecta rostos.
 def detect_faces(encodings_file, check_interval=10, resize_scale=0.7, forget_frames=28, model_detection="hog"):
