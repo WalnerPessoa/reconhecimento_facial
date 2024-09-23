@@ -75,7 +75,7 @@ def load_encodings(pickle_file):
     with encodings_lock:  # Garantir que o acesso seja controlado ao carregar as codificações.
         with open(pickle_file, 'rb') as f:
             data = pickle.load(f)
-    print(f"[INFO ENCODING] Encodings carregados: {data['users']}")  # Adicione isso para verificar o carregamento
+    print(f"[INFO ENCODING] Encodings carregados::::::::")# {data['users']}")  # Adicione isso para verificar o carregamento
     return data['users']
 
 
@@ -144,9 +144,9 @@ def check_for_new_encodings(encodings_file, last_mtime):
         try:
             result = subprocess.run(['sudo', 'systemctl', 'restart', 'rec_facial.service'], check=True)
 
-            new_encodings = load_encodings(encodings_file)# NOVA LINHA
-            if new_encodings:# NOVA LINHA
-                users = new_encodings # NOVA LINHA # Se houver novas codificações, atualiza
+            #new_encodings = load_encodings(encodings_file)# NOVA LINHA
+            #if new_encodings:# NOVA LINHA
+            #    users = new_encodings # NOVA LINHA # Se houver novas codificações, atualiza
 
             if result.returncode == 0:
                 print("[INFO] Serviço reiniciado com sucesso.")
