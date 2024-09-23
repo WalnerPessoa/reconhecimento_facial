@@ -68,11 +68,15 @@ def play_audio(audio_path):
 '''
 
 # Função que carrega as codificações faciais dos usuários salvas em um arquivo pickle.
+
 def load_encodings(pickle_file):
     with encodings_lock:  # Garantir que o acesso seja controlado ao carregar as codificações.
         with open(pickle_file, 'rb') as f:
             data = pickle.load(f)
+    print(f"[INFO ENCODING] Encodings carregados: {data['users']}")  # Adicione isso para verificar o carregamento
     return data['users']
+
+
 
 # Função que realiza o reconhecimento facial.
 def recognize_faces(face_queue, users, played_audios, frames_without_recognition, forget_frames):
