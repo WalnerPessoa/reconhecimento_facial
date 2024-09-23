@@ -143,6 +143,11 @@ def check_for_new_encodings(encodings_file, last_mtime):
         print("[INFO] Atualizando codificações faciais... Reiniciando o serviço.")
         try:
             result = subprocess.run(['sudo', 'systemctl', 'restart', 'rec_facial.service'], check=True)
+
+            new_encodings = load_encodings(encodings_file)# NOVA LINHA
+            if new_encodings:# NOVA LINHA
+                users = new_encodings # NOVA LINHA # Se houver novas codificações, atualiza
+
             if result.returncode == 0:
                 print("[INFO] Serviço reiniciado com sucesso.")
             else:
