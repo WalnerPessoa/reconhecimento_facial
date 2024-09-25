@@ -265,15 +265,16 @@ async def upload(
         pickle.dump(data, f)
 
     # Após salvar, faz a cópia do arquivo para o Raspberry Pi
-    scp_command = f"scp {pickle_file} felipe@192.168.15.5:/home/felipe/"
-    try:
-        subprocess.run(scp_command, shell=True, check=True)
-        copy_message = "Sistema no Raspberry atualizado"
-    except subprocess.CalledProcessError as e:
-        copy_message = f"Erro ao copiar o arquivo para o Raspberry Pi: {e}"
+    #scp_command = f"scp {pickle_file} felipe@192.168.0.33:/home/felipe/"
+    #try:
+    #    subprocess.run(scp_command, shell=True, check=True)
+    #    copy_message = "Sistema no Raspberry atualizado"
+    #except subprocess.CalledProcessError as e:
+    #    copy_message = f"Erro ao copiar o arquivo para o Raspberry Pi: {e}"
 
     # Mensagem de sucesso após o cadastro e a cópia
-    return JSONResponse({"message": f"Novo rosto cadastrado com sucesso. {copy_message}"})
+    #return JSONResponse({"message": f"Novo rosto cadastrado com sucesso. {copy_message}"})
+    return JSONResponse({"message": f"Novo rosto cadastrado com sucesso. "})
 
 # Executa o servidor FastAPI
 if __name__ == "__main__":
