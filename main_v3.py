@@ -1,5 +1,3 @@
-
-
 # -----------------------------------------------------------#
 # Projeto   : Sistema de reconhecimento facial Rasberry      #
 # File Name : recogintion_face_imagem_v6_final.py            #
@@ -7,11 +5,6 @@
 # Autor(a)s : Walner de Oliveira /                           #
 # Objetivo  : executar em Webcam o reconhecimento facial     #
 # Alteracao : 09/09/2024                                     #
-#                                                            #
-# arquivos desse sistema:                                    #
-# rec_facial_ultimo.py                                              #
-# main.py                                                    #
-# ativar_gpio.py                                             #
 # -----------------------------------------------------------#
 #USO
 
@@ -19,36 +12,39 @@
 #uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 import os
-import pickle
+import pickle  # Usado para serialização e desserialização de dados.
 import face_recognition
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from typing import List
 import uvicorn
-import subprocess  # Novo import para usar o SCP
 
+# Cria a instância da aplicação FastAPI.
 app = FastAPI()
 
+# Monta o diretório para servir arquivos estáticos (neste caso, áudios).
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Pastas para salvar as imagens e os áudios dos usuários cadastrados.
 UPLOAD_FOLDER = 'dataset/'
 AUDIO_FOLDER = 'static/audio/'
 
+# Garante que as pastas existem, criando-as se necessário.
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
-# Função para carregar e codificar várias imagens
+# Função que carrega e gera as codificações faciais para múltiplas imagens.
 def load_face_encodings(image_paths):
     encodings = []
     for image_path in image_paths:
-        image = face_recognition.load_image_file(image_path)
-        encoding = face_recognition.face_encodings(image)
-        if encoding:  # Verifica se foi possível encontrar uma face na imagem
-            encodings.append(encoding[0].tolist())  # Adiciona a codificação à lista
+        image = face_recognition.load_image_file(image_path)  # Carrega a imagem.
+        encoding = face_recognition.face_encodings(image)  # Gera a codificação facial.
+        if encoding:  # Se uma face for detectada, armazena a codificação.
+            encodings.append(encoding[0].tolist())
     return encodings
 
-# Página inicial para upload (HTML com modal moderno)
+# Rota GET para exibir a página HTML principal com o formulário de cadastro.
 @app.get("/", response_class=HTMLResponse)
 async def main():
     return """
@@ -56,14 +52,14 @@ async def main():
         <head>
             <title>Cadastro de Usuário</title>
             <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    background-color: #f4f4f9;
+                body { /* CSS simples para estilizar a página */
                     display: flex;
                     justify-content: center;
                     align-items: center;
                     height: 100vh;
                     margin: 0;
+                    font-family: Arial, sans-serif;
+                    background-color: #f0f0f0;
                 }
                 .container {
                     text-align: center;
@@ -71,8 +67,9 @@ async def main():
                     padding: 20px;
                     border-radius: 10px;
                     box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
-                    width: 100%;
-                    max-width: 400px;
+                }
+                form {
+                    margin-top: 20px;
                 }
                 input[type="text"], input[type="file"], select {
                     width: 100%;
@@ -92,41 +89,28 @@ async def main():
                 input[type="submit"]:hover {
                     background-color: #0056b3;
                 }
-                .modal {
-                    display: none;
-                    position: fixed;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: rgba(0, 0, 0, 0.5);
-                    justify-content: center;
-                    align-items: center;
-                }
-                .modal-content {
-                    background-color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    text-align: center;
-                }
-                .modal-content h2 {
-                    margin: 0 0 20px 0;
-                }
-                .close {
-                    background-color: #007bff;
-                    color: white;
-                    padding: 10px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    display: inline-block;
-                    margin-top: 10px;
-                }
             </style>
+            <script>
+                async function handleSubmit(event) {
+                    event.preventDefault();
+                    const formData = new FormData(event.target);
+                    const response = await fetch('/upload/', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                    } else {
+                        alert(result.error);
+                    }
+                }
+            </script>
         </head>
         <body>
             <div class="container">
                 <h1>CADASTRE AQUI NOVO USUÁRIO</h1>
-                <form id="uploadForm" action="/upload/" enctype="multipart/form-data" method="post">
+                <form onsubmit="handleSubmit(event)" enctype="multipart/form-data">
                     <label for="name">Nome do Usuário:</label>
                     <input type="text" id="name" name="name" required><br><br>
 
@@ -163,119 +147,73 @@ async def main():
                     <input type="submit" value="Cadastrar Usuário">
                 </form>
             </div>
-
-            <!-- Modal para confirmar cadastro -->
-            <div id="successModal" class="modal">
-                <div class="modal-content">
-                    <h2 id="modalMessage"></h2>
-                    <span class="close" onclick="closeModal()">Fechar</span>
-                </div>
-            </div>
-
-            <script>
-                // Captura o evento de submissão do formulário
-                document.getElementById('uploadForm').addEventListener('submit', function(event) {
-                    event.preventDefault();
-                    var form = this;
-            
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("POST", form.action, true);
-                    var formData = new FormData(form);
-            
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState == 4 && xhr.status == 200) {
-                            var response = JSON.parse(xhr.responseText);
-                            document.getElementById("modalMessage").innerText = response.message;
-                            document.getElementById("successModal").style.display = "flex";
-                            
-                            // Limpa os campos do formulário
-                            form.reset();
-                        }
-                    };
-                    xhr.send(formData);
-                });
-            
-                function closeModal() {
-                    document.getElementById("successModal").style.display = "none";
-                }
-            </script>
-
         </body>
     </html>
     """
 
-# Rota para lidar com o envio de imagens, áudio e item
+# Rota para lidar com o envio dos dados do formulário (nome, fotos, áudio e GPIO).
 @app.post("/upload/")
 async def upload(
-        name: str = Form(...),
-        photos: List[UploadFile] = File(...),
-        audio: UploadFile = File(...),
-        item: str = Form(...)
+        name: str = Form(...),  # Captura o nome do usuário.
+        photos: List[UploadFile] = File(...),  # Lista de arquivos de foto.
+        audio: UploadFile = File(...),  # Arquivo de áudio.
+        item: str = Form(...)  # Valor do GPIO escolhido pelo usuário.
 ):
-    # Lista para armazenar os caminhos das imagens
+    # Lista para armazenar os caminhos das imagens carregadas.
     image_paths = []
 
-    # Salva todas as imagens no diretório
+    # Salva todas as imagens enviadas no diretório de uploads.
     for photo in photos:
         photo_path = os.path.join(UPLOAD_FOLDER, photo.filename)
         with open(photo_path, "wb") as buffer:
-            buffer.write(await photo.read())
+            buffer.write(await photo.read())  # Lê e escreve a imagem no diretório.
         image_paths.append(photo_path)
 
-    # Salva o áudio no diretório
+    # Salva o arquivo de áudio no diretório de áudios.
     audio_path = os.path.join(AUDIO_FOLDER, audio.filename)
     with open(audio_path, "wb") as buffer:
         buffer.write(await audio.read())
 
-    # Carrega todas as imagens e gera as codificações faciais
+    # Gera as codificações faciais das imagens enviadas.
     user_encodings = load_face_encodings(image_paths)
 
-    # Se nenhuma codificação facial for encontrada, retorne uma mensagem de erro
+    # Se nenhuma face for detectada nas imagens, retorna um erro.
     if not user_encodings:
-        return JSONResponse({"message": "Erro: Nenhuma codificação facial encontrada."}, status_code=400)
+        return JSONResponse(content={"success": False, "error": "Nenhuma codificação facial encontrada nas imagens enviadas."}, status_code=400)
 
-    # Carrega o arquivo pickle existente ou cria um novo
-    pickle_file = 'encodings.pkl'
+    # Carrega o arquivo pickle com os usuários já cadastrados ou cria um novo.
+    pickle_file = os.path.join(os.getcwd(), 'encodings.pkl')
+
     if os.path.exists(pickle_file):
         with open(pickle_file, 'rb') as f:
-            data = pickle.load(f)
+            data = pickle.load(f)  # Carrega os dados existentes.
     else:
-        data = {'users': []}  # Estrutura com uma lista de usuários
+        data = {'users': []}  # Se não existir, cria uma nova estrutura para armazenar os usuários.
 
-    # Verifica se o nome já existe no JSON
+    # Verifica se o usuário já existe no sistema.
     user_exists = False
     for user in data['users']:
-        if user['name'] == name:
-            # Se o usuário já existe, adiciona as novas codificações à lista de encodings
+        if user['name'] == name:  # Se o usuário já existe, adiciona as novas codificações.
             user['encodings'].extend(user_encodings)
             user_exists = True
             break
 
+    # Se o usuário não existir, cria um novo registro.
     if not user_exists:
-        # Se o usuário não existe, cria um novo registro
         data['users'].append({
             'name': name,
             'audio': audio.filename,
             'encodings': user_encodings,
-            'item': item  # Incluindo o item selecionado no cadastro
+            'item': item  # Associa o GPIO selecionado ao usuário.
         })
 
-    # Salva os dados atualizados no arquivo pickle
+    # Salva os dados atualizados no arquivo pickle.
     with open(pickle_file, 'wb') as f:
         pickle.dump(data, f)
 
-    # Após salvar, faz a cópia do arquivo para o Raspberry Pi
-    #scp_command = f"scp {pickle_file} felipe@192.168.0.33:/home/felipe/"
-    #try:
-    #    subprocess.run(scp_command, shell=True, check=True)
-    #    copy_message = "Sistema no Raspberry atualizado"
-    #except subprocess.CalledProcessError as e:
-    #    copy_message = f"Erro ao copiar o arquivo para o Raspberry Pi: {e}"
+    # Retorna a resposta de sucesso em JSON
+    return JSONResponse(content={"success": True, "message": f"Cadastro de {name} concluído com sucesso!"}, status_code=200)
 
-    # Mensagem de sucesso após o cadastro e a cópia
-    #return JSONResponse({"message": f"Novo rosto cadastrado com sucesso. {copy_message}"})
-    return JSONResponse({"message": f"Novo rosto cadastrado com sucesso. "})
 
-# Executa o servidor FastAPI
+# Inicia o servidor FastAPI na porta 8000.
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)

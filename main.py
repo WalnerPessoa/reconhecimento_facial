@@ -212,7 +212,26 @@ async def upload(
         pickle.dump(data, f)
 
     # Redireciona o usuário para a página inicial após o cadastro.
-    return RedirectResponse(url="/", status_code=303)
+    #return RedirectResponse(url="/", status_code=303)
+    return HTMLResponse(content=f"""
+        <html>
+            <head>
+                <title>Cadastro Concluído</title>
+                <script type="text/javascript">
+                    // Função para exibir o alerta de confirmação e redirecionar
+                    function showPopup() {{
+                        alert('Cadastro de {name} foi concluído com sucesso!');
+                        window.location.href = '/';  // Redireciona para a página inicial após fechar o alerta
+                    }}
+                </script>
+            </head>
+            <body onload="showPopup()">
+                <h1>Cadastro de {name} concluído com sucesso!</h1>
+                <p>Você será redirecionado para a página inicial.</p>
+            </body>
+        </html>
+        """, status_code=200)
+
 
 # Inicia o servidor FastAPI na porta 8000.
 if __name__ == "__main__":

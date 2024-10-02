@@ -168,7 +168,7 @@ def detect_faces(encodings_file, check_interval=60, resize_scale=0.7, forget_fra
         if not boxes:
             frames_without_recognition[0] = 35
             #print('[ACTION] Permitir que usuários sejam reconhecidos novamente')
-            #played_audios.clear()  # Esquece todos os nomes, permitindo que sejam acionados novamente.
+            played_audios.clear()  # Esquece todos os nomes, permitindo que sejam acionados novamente.
 
         if boxes:
             face_queue.put((small_frame, boxes, resize_scale))
